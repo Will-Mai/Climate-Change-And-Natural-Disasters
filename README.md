@@ -16,7 +16,7 @@ The primary objective of the project is to analyze correlations between rising s
 
 - Managing GitHub workflow (branches, commits, merges) :	William Mai
 
-- Creating Code and Producing Visualizations: James Lambros
+- Creating Code and Producing Visualizations: James Lambros, David Dominguez
 
 - Dataset research and justification: David Peyton
 
