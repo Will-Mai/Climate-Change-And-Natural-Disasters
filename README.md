@@ -12,13 +12,9 @@ The primary objective of the project is to analyze correlations between rising s
 
 ### Team Contributions
 
-- Dataset research and justification: David Peyton
-
 - Data cleaning and preprocessing : 	William Mai
 
 - Managing GitHub workflow (branches, commits, merges) :	William Mai
-
-- Writing documentation and project report : David Peyton
 
 ## Project Outcome
 This pairing of datasets is particularly suitable for the project since it integrates environmental drivers (temperature anomalies) with event-based impact data over a period of more than a hundred years. The expected outcome is an interactive analytic model and visual dashboard that helps reveal the way climate variables forecast disaster likelihoods. Lastly, this study contributes to climate resilience research since it alerts policymakers and communities to emerging risk locations and the precedence of effective mitigation mechanisms.
