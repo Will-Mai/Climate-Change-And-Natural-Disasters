@@ -22,7 +22,7 @@ The primary objective of the project is to analyze correlations between rising s
 
 - Writing documentation and project report :	David Peyton
 
-- Building Streamlit applicaiton : Anthony Kardeen 
+- Building Streamlit application : Anthony Kardeen 
 
 ## Project Outcome
 This pairing of datasets is particularly suitable for the project since it integrates environmental drivers (temperature anomalies) with event-based impact data over a period of more than a hundred years. The expected outcome is an interactive analytic model and visual dashboard that helps reveal the way climate variables forecast disaster likelihoods. Lastly, this study contributes to climate resilience research since it alerts policymakers and communities to emerging risk locations and the precedence of effective mitigation mechanisms.
