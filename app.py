@@ -1,0 +1,30 @@
+import streamlit as st
+from climate_disasters_pipeline import (
+    load_disaster_data,
+    build_merged_dataset,
+    compute_disaster_summary,
+    disaster_type_counts,
+)
+
+st.title("ENG 220 – Climate Change & Natural Disasters")
+
+# Build main merged table
+temps_annual, disasters_per_year, merged = build_merged_dataset()
+
+# Load full disaster events for type counts
+disasters_all, _ = load_disaster_data()
+
+summary_stats = compute_disaster_summary(merged)
+type_counts = disaster_type_counts(disasters_all)
+
+st.subheader("Annual Temperature vs. Disaster Counts")
+st.line_chart(merged.set_index("year")[["TempF", "disaster_count"]])
+
+st.subheader("Summary Statistics (Disasters per Year)")
+st.json(summary_stats)
+
+st.subheader("Most Common Disaster Types")
+st.bar_chart(type_counts)
+
+st.subheader("Histogram of Disaster Counts per Year")
+st.bar_chart(merged.set_index("year")["disaster_count"])
