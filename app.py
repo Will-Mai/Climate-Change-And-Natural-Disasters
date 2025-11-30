@@ -33,7 +33,7 @@ st.json(summary_stats)
 st.subheader("Most Common Disaster Types")
 type_counts_df = type_counts.reset_index()
 type_counts_df.columns = ["disaster_type", "count"]
-top_types = type_counts_df.head(16)  # always show top 16
+top_types = type_counts_df.head(16)  # always show top 16 types
 st.bar_chart(top_types.set_index("disaster_type"))
 
 st.subheader("Histogram of Disaster Counts per Year")
