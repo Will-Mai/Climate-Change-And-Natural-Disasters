@@ -157,40 +157,82 @@ def load_disaster_data(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Load and clean disaster datasets.
+
+    Returns:
+        disasters_all: long-format events table with columns
+                       ['event_date', 'year', 'disaster_type', 'source']
+        disasters_per_year: aggregated table ['year', 'disaster_count']
     """
+    # File paths inside Cleaned Data/Natural Disasters
     dis_bar_path   = _disaster_path(base_path, "Baris_Dincer_Disasters_Cleaned.csv")
     dis_shrey_path = _disaster_path(base_path, "Shreyansh_Dangi_Disasters_Cleaned.csv")
 
-
-
-
-    # --- Baris Dinçer disasters ---
+    # ---------- Baris Dinçer disasters ----------
     dis_bar = pd.read_csv(dis_bar_path)
-    dis_bar["event_date"] = pd.to_datetime(dis_bar["EventDate"], errors="coerce")
+
+    # Parse dates and years
+    if "EventDate" in dis_bar.columns:
+        date_col = "EventDate"
+    else:
+        # fallback: pick first non-numeric column as date
+        non_numeric = dis_bar.select_dtypes(exclude="number").columns
+        date_col = non_numeric[0]
+
+    dis_bar["event_date"] = pd.to_datetime(dis_bar[date_col], errors="coerce")
     dis_bar["year"] = dis_bar["event_date"].dt.year
 
-    dis_bar = dis_bar.rename(
-        columns={
-            "Var2": "region",
-            "Var3": "disaster_group",
-            "Var4": "disaster_subgroup",
-            "Var5": "disaster_type",
-        }
-    )
+    # Figure out which column holds the disaster type
+    baris_type_col = None
+
+    # 1) if the original notebook used Var5, handle that
+    if "Var5" in dis_bar.columns:
+        baris_type_col = "Var5"
+
+    # 2) otherwise, look for likely names
+    if baris_type_col is None:
+        for c in ["disaster_type", "DisasterType", "Disaster_Type", "Disaster Type"]:
+            if c in dis_bar.columns:
+                baris_type_col = c
+                break
+
+    # 3) ultimate fallback: last column
+    if baris_type_col is None:
+        baris_type_col = dis_bar.columns[-1]
+
+    # Create a unified disaster_type column
+    dis_bar["disaster_type"] = dis_bar[baris_type_col]
     dis_bar["source"] = "Baris_Dincer"
 
     dis_bar_std = dis_bar[["event_date", "year", "disaster_type", "source"]]
 
-    # --- Shreyansh Dangi disasters ---
+    # ---------- Shreyansh Dangi disasters ----------
     dis_shrey = pd.read_csv(dis_shrey_path)
-    dis_shrey["event_date"] = pd.to_datetime(dis_shrey["Date"], errors="coerce")
+
+    # Parse dates and years
+    if "Date" in dis_shrey.columns:
+        s_date_col = "Date"
+    else:
+        non_numeric_s = dis_shrey.select_dtypes(exclude="number").columns
+        s_date_col = non_numeric_s[0]
+
+    dis_shrey["event_date"] = pd.to_datetime(dis_shrey[s_date_col], errors="coerce")
     dis_shrey["year"] = dis_shrey["event_date"].dt.year
-    dis_shrey["disaster_type"] = dis_shrey["DisasterType"]
+
+    # Detect disaster-type column
+    shrey_type_col = None
+    for c in ["DisasterType", "disaster_type", "Disaster_Type", "Disaster Type"]:
+        if c in dis_shrey.columns:
+            shrey_type_col = c
+            break
+    if shrey_type_col is None:
+        shrey_type_col = dis_shrey.columns[-1]
+
+    dis_shrey["disaster_type"] = dis_shrey[shrey_type_col]
     dis_shrey["source"] = "Shreyansh_Dangi"
 
     dis_shrey_std = dis_shrey[["event_date", "year", "disaster_type", "source"]]
 
-    # Combine both disaster sources
+    # ---------- Combine both sources ----------
     disasters_all = pd.concat([dis_bar_std, dis_shrey_std], ignore_index=True)
 
     disasters_all = disasters_all.dropna(subset=["year", "disaster_type"])
@@ -204,6 +246,7 @@ def load_disaster_data(
     )
 
     return disasters_all, disasters_per_year
+
 
 
 
