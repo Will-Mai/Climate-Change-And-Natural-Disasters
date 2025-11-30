@@ -124,19 +124,19 @@ def load_disaster_data(
                        ['event_date', 'year', 'disaster_type', 'source']
         disasters_per_year: aggregated table ['year', 'disaster_count']
     """
-    # Path to the Baris disasters file in the repo
-    dis_bar_path = _csv_path(
+    # Build the full path directly, no _csv_path helper
+    dis_bar_path = os.path.join(
         base_path,
-        os.path.join(
-            "Cleaned Data",
-            "Natural Disasters",
-            "Baris_Dincer_Disasters_Cleaned.csv",
-        ),
+        "Cleaned Data",
+        "Natural Disasters",
+        "Baris_Dincer_Disasters_Cleaned.csv",
     )
 
     # --- Baris Dinçer disasters ---
     # expected columns: ['EventDate', 'Var2', 'Var3', 'Var4', 'Var5']
     dis_bar = pd.read_csv(dis_bar_path)
+
+    # Parse date and year
     dis_bar["event_date"] = pd.to_datetime(dis_bar["EventDate"], errors="coerce")
     dis_bar["year"] = dis_bar["event_date"].dt.year
 
@@ -167,6 +167,7 @@ def load_disaster_data(
     )
 
     return disasters_all, disasters_per_year
+
 
 
 
@@ -223,21 +224,9 @@ def load_temperature_data(
 def build_merged_dataset(base_path: str = ".") -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Build the main per-year dataset using ONLY disaster data.
-
-    Returns
-    -------
-    disasters_per_year : DataFrame
-        Table with columns like ['year', 'disaster_count', ...].
-    merged : DataFrame
-        Same as disasters_per_year (kept for backwards compatibility
-        with the original app structure).
     """
-    # Load all disaster events and per-year counts
     disasters_all, disasters_per_year = load_disaster_data(base_path=base_path)
-
-    # For now, 'merged' is just the per-year table
     merged = disasters_per_year.copy()
-
     return disasters_per_year, merged
 
 
