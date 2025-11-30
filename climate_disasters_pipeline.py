@@ -27,8 +27,11 @@ from typing import Tuple, Dict
 import numpy as np
 import pandas as pd
 
-# Base data folders as they exist in your repo
-BASE_DATA_DIR = os.path.join("Cleaned Data", "Cleaned Data")
+# Folder layout (what you showed in the screenshot):
+#   Cleaned Data/
+#       Temps/
+#       Natural Disasters/
+BASE_DATA_DIR = "Cleaned Data"
 TEMPS_DIR = os.path.join(BASE_DATA_DIR, "Temps")
 DISASTERS_DIR = os.path.join(BASE_DATA_DIR, "Natural Disasters")
 
@@ -46,16 +49,19 @@ def _disaster_path(base_path: str, filename: str) -> str:
 
 
 
+
 def load_temperature_data(
     base_path: str = ".",
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Load and clean temperature datasets.
     """
-    # These names must match exactly what you see in Cleaned Data/Cleaned Data/Temps
+    # These names must match exactly what is in Cleaned Data/Temps
     temps_gia_path   = _temp_path(base_path, "Gia_Bách_Nguyễn_Earth_Temps_Cleaned.csv")
     temps_berk_path  = _temp_path(base_path, "Berkeley_Earth_Temps_Cleaned.csv")
     temps_josep_path = _temp_path(base_path, "Josep_Ferrer_Temps_Cleaned.csv")
+
+
 
 
 
@@ -116,6 +122,7 @@ def load_disaster_data(
     """
     dis_bar_path   = _disaster_path(base_path, "Baris_Dincer_Disasters_Cleaned.csv")
     dis_shrey_path = _disaster_path(base_path, "Shreyansh_Dangi_Disasters_Cleaned.csv")
+
 
 
 
