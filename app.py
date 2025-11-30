@@ -31,5 +31,16 @@ type_counts_df.columns = ["disaster_type", "count"]
 top_types = type_counts_df.head(16)  # always show top 16 types
 st.bar_chart(top_types.set_index("disaster_type"))
 
-st.subheader("Histogram of Disaster Counts per Year")
-st.bar_chart(merged.set_index("year")["disaster_count"])
+st.subheader("Histogram of Disaster Counts per 5-Year Period")
+
+# Create 5-year bins (e.g., 1980, 1985, 1990, ...)
+hist_df = merged.copy()
+hist_df["year_bin"] = (hist_df["year"] // 5) * 5  # start year of each 5-year block
+
+hist_counts = (
+    hist_df.groupby("year_bin", as_index=False)["disaster_count"]
+    .sum()
+    .sort_values("year_bin")
+)
+
+st.bar_chart(hist_counts.set_index("year_bin")["disaster_count"])
