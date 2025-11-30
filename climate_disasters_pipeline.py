@@ -307,9 +307,21 @@ def build_merged_dataset(
 
 def disaster_type_counts(disasters_all: pd.DataFrame) -> pd.Series:
     """
-    Return a Series with counts per disaster_type.
+    Count how many events of each disaster_type there are.
+
+    Returns:
+        Pandas Series indexed by disaster_type with counts.
     """
-    return disasters_all["disaster_type"].value_counts()
+    if "disaster_type" not in disasters_all.columns:
+        raise KeyError("Column 'disaster_type' not found in disasters_all.")
+
+    # Ensure everything is treated as a string (fixes ArrowTypeError)
+    df = disasters_all.copy()
+    df["disaster_type"] = df["disaster_type"].astype(str)
+
+    counts = df["disaster_type"].value_counts().sort_values(ascending=False)
+    return counts
+
 
 
 # Optional quick test if someone runs this module directly
@@ -334,3 +346,37 @@ if __name__ == "__main__":
     print("Summary stats:", stats, "\n")
     print("Top disaster types:")
     print(type_counts.head())
+
+def compute_disaster_summary(merged: pd.DataFrame) -> Dict[str, float]:
+    """
+    Compute summary statistics for annual disaster counts.
+
+    Args:
+        merged: DataFrame with at least ['year', 'disaster_count'].
+
+    Returns:
+        Dictionary with min, max, mean, median, std, and number of years.
+    """
+    if "disaster_count" not in merged.columns:
+        raise KeyError("Column 'disaster_count' not found in merged dataset.")
+
+    counts = merged["disaster_count"].dropna()
+
+    if counts.empty:
+        return {
+            "min": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "median": 0.0,
+            "std": 0.0,
+            "years_with_data": 0,
+        }
+
+    return {
+        "min": float(counts.min()),
+        "max": float(counts.max()),
+        "mean": float(counts.mean()),
+        "median": float(counts.median()),
+        "std": float(counts.std(ddof=1)),
+        "years_with_data": int(counts.count()),
+    }
