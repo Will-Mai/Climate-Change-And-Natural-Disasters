@@ -69,6 +69,11 @@ def load_disaster_data(
         "Disaster Type",
         "Disaster_Type",
         "Hazard_Type",
+        "Hazard Type",
+        "Disaster Subtype",
+        "Disaster_Subtype",
+        "Subtype",
+        "Type",
         "Var5",  # original EM-DAT style column
     ]
     for c in candidate_names:
@@ -76,9 +81,24 @@ def load_disaster_data(
             hazard_col = c
             break
 
+    # If none of the explicit names were found, look for any column
+    # whose name suggests a type/hazard, but skip year/date columns.
     if hazard_col is None:
-        # Fallback: last non-date column as the type
-        non_date_cols = [c for c in dis_bar.columns if "date" not in c.lower()]
+        for col in dis_bar.columns:
+            low = col.lower()
+            if "type" in low or "hazard" in low:
+                if "date" in low or "year" in low:
+                    continue
+                hazard_col = col
+                break
+
+    # Final fallback: last non-date, non-year column
+    if hazard_col is None:
+        non_date_cols = [
+            c
+            for c in dis_bar.columns
+            if "date" not in c.lower() and "year" not in c.lower()
+        ]
         hazard_col = non_date_cols[-1]
 
     # 3) Build a clean standardized table explicitly
@@ -95,6 +115,9 @@ def load_disaster_data(
     disasters_all = disasters_all.dropna(subset=["year", "disaster_type"])
     disasters_all["year"] = disasters_all["year"].astype(int)
 
+    # 👉 Clamp years to 1900–2025 so plots don't go out to 2080
+    disasters_all = disasters_all[disasters_all["year"].between(1900, 2025)]
+
     # 5) Aggregate: disasters per year
     disasters_per_year = (
         disasters_all.groupby("year", as_index=False)
@@ -104,6 +127,7 @@ def load_disaster_data(
     )
 
     return disasters_all, disasters_per_year
+
 
 
 # ---------------------------------------------------------------------
