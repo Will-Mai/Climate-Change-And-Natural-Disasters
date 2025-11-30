@@ -164,7 +164,7 @@ def load_disaster_data(
         disasters_per_year: aggregated table ['year', 'disaster_count']
     """
     # File paths inside Cleaned Data/Natural Disasters
-    dis_bar_path   = _disaster_path(base_path, "Baris_Dincer_Disasters_Cleaned.csv")
+    dis_bar_path = _disaster_path(base_path, "Baris_Dincer_Disasters_Cleaned.csv")
     dis_shrey_path = _disaster_path(base_path, "Shreyansh_Dangi_Disasters_Cleaned.csv")
 
     # ---------- Baris Dinçer disasters ----------
@@ -173,7 +173,9 @@ def load_disaster_data(
     # Prefer an existing Year column if it exists
     if "Year" in dis_bar.columns:
         dis_bar["year"] = pd.to_numeric(dis_bar["Year"], errors="coerce")
-        dis_bar["event_date"] = pd.to_datetime(dis_bar.get("EventDate", pd.NaT), errors="coerce")
+        dis_bar["event_date"] = pd.to_datetime(
+            dis_bar.get("EventDate", pd.NaT), errors="coerce"
+        )
     else:
         # Parse dates and derive year
         if "EventDate" in dis_bar.columns:
@@ -185,11 +187,10 @@ def load_disaster_data(
         dis_bar["event_date"] = pd.to_datetime(dis_bar[date_col], errors="coerce")
         dis_bar["year"] = dis_bar["event_date"].dt.year
 
-
     # Figure out which column holds the disaster type
     baris_type_col = None
 
-    # 1) if the original notebook used Var5, handle that
+    # 1) many versions use Var5
     if "Var5" in dis_bar.columns:
         baris_type_col = "Var5"
 
@@ -207,7 +208,6 @@ def load_disaster_data(
     # Create a unified disaster_type column
     dis_bar["disaster_type"] = dis_bar[baris_type_col]
     dis_bar["source"] = "Baris_Dincer"
-
     dis_bar_std = dis_bar[["event_date", "year", "disaster_type", "source"]]
 
     # ---------- Shreyansh Dangi disasters ----------
@@ -216,7 +216,9 @@ def load_disaster_data(
     # Prefer an existing Year column if it exists
     if "Year" in dis_shrey.columns:
         dis_shrey["year"] = pd.to_numeric(dis_shrey["Year"], errors="coerce")
-        dis_shrey["event_date"] = pd.to_datetime(dis_shrey.get("Date", pd.NaT), errors="coerce")
+        dis_shrey["event_date"] = pd.to_datetime(
+            dis_shrey.get("Date", pd.NaT), errors="coerce"
+        )
     else:
         if "Date" in dis_shrey.columns:
             s_date_col = "Date"
@@ -224,7 +226,9 @@ def load_disaster_data(
             non_numeric_s = dis_shrey.select_dtypes(exclude="number").columns
             s_date_col = non_numeric_s[0]
 
-        dis_shrey["event_date"] = pd.to_datetime(dis_shrey[s_date_col], errors="coerce")
+        dis_shrey["event_date"] = pd.to_datetime(
+            dis_shrey[s_date_col], errors="coerce"
+        )
         dis_shrey["year"] = dis_shrey["event_date"].dt.year
 
     # Detect disaster-type column
@@ -238,35 +242,30 @@ def load_disaster_data(
 
     dis_shrey["disaster_type"] = dis_shrey[shrey_type_col]
     dis_shrey["source"] = "Shreyansh_Dangi"
-
     dis_shrey_std = dis_shrey[["event_date", "year", "disaster_type", "source"]]
 
     # ---------- Combine both sources ----------
-# Combine datasets
-disasters_all = pd.concat([dis_bar_std, dis_shrey_std], ignore_index=True)
+    disasters_all = pd.concat([dis_bar_std, dis_shrey_std], ignore_index=True)
 
-# Clean missing values
-disasters_all = disasters_all.dropna(subset=["year", "disaster_type"])
+    # Clean missing / bad years
+    disasters_all = disasters_all.dropna(subset=["year", "disaster_type"])
+    disasters_all["year"] = disasters_all["year"].astype(int)
 
-# Ensure year is integer
-disasters_all["year"] = disasters_all["year"].astype(int)
+    # Keep only realistic years (adjust max as you like: 2025, 2030, etc.)
+    disasters_all = disasters_all[
+        (disasters_all["year"] >= 1900) & (disasters_all["year"] <= 2030)
+    ]
 
-# Keep only realistic years
-# (prevent weird parsed years like 2045, 2077, 3999, etc.)
-disasters_all = disasters_all[
-    (disasters_all["year"] >= 1900) & (disasters_all["year"] <= 2030)
-]
-
-# Aggregate disasters per year
-disasters_per_year = (
-    disasters_all.groupby("year", as_index=False)
-    .size()
-    .rename(columns={"size": "disaster_count"})
-    .sort_values("year")
-)
-
+    # Aggregate disasters per year
+    disasters_per_year = (
+        disasters_all.groupby("year", as_index=False)
+        .size()
+        .rename(columns={"size": "disaster_count"})
+        .sort_values("year")
+    )
 
     return disasters_all, disasters_per_year
+
 
 
 
