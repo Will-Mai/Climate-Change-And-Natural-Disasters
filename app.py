@@ -7,16 +7,11 @@ from climate_disasters_pipeline import (
     disaster_type_counts,
 )
 
-st.title("ENG 220 – Climate Change & Natural Disasters")
-
-# Folder where app.py lives
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
-# Build main per-year table (disasters only)
 disasters_per_year, merged = build_merged_dataset(base_path=BASE_PATH)
-
-# Load full disaster events for type counts
 disasters_all, _ = load_disaster_data(base_path=BASE_PATH)
+
 
 # Summary statistics
 summary_stats = compute_disaster_summary(merged)
