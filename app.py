@@ -28,10 +28,24 @@ st.subheader("Summary Statistics (Disasters per Year)")
 st.json(summary_stats)
 
 st.subheader("Most Common Disaster Types")
+
+# Let the viewer choose how many top types to display
+top_n = st.slider(
+    "Number of top disaster types to display",
+    min_value=5,
+    max_value=min(30, len(type_counts)),
+    value=min(10, len(type_counts)),
+)
+
+# Take the top N most common types
+type_counts_top = type_counts.head(top_n)
+
 # Convert Series -> DataFrame so Streamlit uses disaster_type as x-axis
-type_counts_df = type_counts.reset_index()
+type_counts_df = type_counts_top.reset_index()
 type_counts_df.columns = ["disaster_type", "count"]
+
 st.bar_chart(type_counts_df.set_index("disaster_type"))
+
 
 st.subheader("Histogram of Disaster Counts per Year")
 st.bar_chart(merged.set_index("year")["disaster_count"])
