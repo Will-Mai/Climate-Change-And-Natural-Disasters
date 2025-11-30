@@ -19,20 +19,17 @@ Files expected (in base_path or Kaggle input path):
 - Shreyansh_Dangi_Disasters_Cleaned.csv
 """
 
+from typing import Tuple
 import os
-from typing import Tuple, Dict
-
 import pandas as pd
 
 
-# ---------------------------------------------------------------------
-# 1. Load disaster data  (only Baris_Dincer_Disasters_Cleaned.csv)
-# ---------------------------------------------------------------------
 def load_disaster_data(
     base_path: str = ".",
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Load and clean disaster dataset (Baris_Dincer only).
+    Load and clean disaster dataset (Baris_Dincer only), using Var5 as the
+    detailed disaster type.
 
     Returns
     -------
@@ -41,10 +38,7 @@ def load_disaster_data(
     disasters_per_year : DataFrame
         ['year', 'disaster_count']
     """
-    import pandas as pd
-    import os
-
-    # Build full path to the Baris disasters file
+    # Path to Baris_Dincer cleaned file in the repo
     dis_bar_path = os.path.join(
         base_path,
         "Cleaned Data",
@@ -54,77 +48,34 @@ def load_disaster_data(
 
     dis_bar = pd.read_csv(dis_bar_path)
 
-    # 1) Create event_date and year
-    if "EventDate" in dis_bar.columns:
-        date_col = "EventDate"
-    else:
-        date_col = dis_bar.columns[0]
-
-    dis_bar["event_date"] = pd.to_datetime(dis_bar[date_col], errors="coerce")
+    # --- Create event_date and year ---
+    dis_bar["event_date"] = pd.to_datetime(dis_bar["EventDate"], errors="coerce")
     dis_bar["year"] = dis_bar["event_date"].dt.year
 
-    # 2) Decide which column is the detailed disaster type
+    # --- Use Var5 as the detailed hazard type ---
+    # (This column has values like Tornado, Hail, Severe storm, etc.)
+    dis_bar["disaster_type"] = dis_bar["Var5"].astype(str)
 
-    # ✅ First, if Var5 exists, ALWAYS use it (most detailed hazard)
-    if "Var5" in dis_bar.columns:
-        hazard_col = "Var5"
-    else:
-        # Otherwise fall back to name-based detection
-        hazard_col = None
-        candidate_names = [
-            "disaster_type",
-            "DisasterType",
-            "Disaster Type",
-            "Disaster_Type",
-            "Hazard_Type",
-            "Hazard Type",
-            "Disaster Subtype",
-            "Disaster_Subtype",
-            "Subtype",
-            "Type",
-        ]
-        for c in candidate_names:
-            if c in dis_bar.columns:
-                hazard_col = c
-                break
-
-        # If still nothing, look for any column that seems like a type/hazard
-        if hazard_col is None:
-            for col in dis_bar.columns:
-                low = col.lower()
-                if "type" in low or "hazard" in low:
-                    if "date" in low or "year" in low:
-                        continue
-                    hazard_col = col
-                    break
-
-        # Final fallback: last non-date, non-year column
-        if hazard_col is None:
-            non_date_cols = [
-                c
-                for c in dis_bar.columns
-                if "date" not in c.lower() and "year" not in c.lower()
-            ]
-            hazard_col = non_date_cols[-1]
-
-    # 3) Build a clean standardized table explicitly
+    # --- Standardized events table ---
     disasters_all = pd.DataFrame(
         {
             "event_date": dis_bar["event_date"],
             "year": dis_bar["year"],
-            "disaster_type": dis_bar[hazard_col].astype(str),
+            "disaster_type": dis_bar["disaster_type"],
             "source": "Baris_Dincer",
         }
     )
 
-    # 4) Clean up: drop rows missing year or type, ensure int years
+    # Drop rows without year or type and make year integer
     disasters_all = disasters_all.dropna(subset=["year", "disaster_type"])
     disasters_all["year"] = disasters_all["year"].astype(int)
 
-    # Clamp years to 1900–2025
-    disasters_all = disasters_all[disasters_all["year"].between(1900, 2025)]
+    # Keep only 1900–2021 (dataset ends in 2021 anyway; also drops tiny tails)
+    disasters_all = disasters_all[
+        (disasters_all["year"] >= 1900) & (disasters_all["year"] <= 2021)
+    ]
 
-    # 5) Aggregate: disasters per year
+    # --- Per-year counts ---
     disasters_per_year = (
         disasters_all.groupby("year", as_index=False)
         .size()
