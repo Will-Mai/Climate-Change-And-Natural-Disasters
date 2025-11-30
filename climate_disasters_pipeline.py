@@ -54,15 +54,14 @@ def load_disaster_data(
     )
 
     # Read the CSV
-    # Expected columns include 'EventDate' and Var2–Var5 (from EM-DAT)
+    # Expected columns: EventDate, Var2, Var3, Var4, Var5
     dis_bar = pd.read_csv(dis_bar_path)
 
-    # Parse date and year
+    # 1) Create a proper datetime column and year
     dis_bar["event_date"] = pd.to_datetime(dis_bar["EventDate"], errors="coerce")
     dis_bar["year"] = dis_bar["event_date"].dt.year
 
-    # Rename columns so we have a clear 'disaster_type' field
-    # Var5 is usually the hazard type (e.g., Wildfire, Flood, etc.)
+    # 2) Rename Var2–Var5 so Var5 becomes 'disaster_type'
     dis_bar = dis_bar.rename(
         columns={
             "Var2": "region",
@@ -71,9 +70,12 @@ def load_disaster_data(
             "Var5": "disaster_type",
         }
     )
+
+    # 3) Add a source label
     dis_bar["source"] = "Baris_Dincer"
 
-    # Standardized event table
+    # 4) Build the standardized event table
+    #    At this point we are guaranteed to have these four columns
     disasters_all = dis_bar[["event_date", "year", "disaster_type", "source"]].copy()
 
     # Clean up: drop rows missing year or disaster_type and make year int
@@ -92,7 +94,7 @@ def load_disaster_data(
 
 
 # ---------------------------------------------------------------------
-# 2. Build merged dataset (here it's just the per-year disaster table)
+# 2. Merged dataset (here it's just the per-year disaster table)
 # ---------------------------------------------------------------------
 def build_merged_dataset(base_path: str = ".") -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -170,3 +172,4 @@ def disaster_type_counts(disasters_all: pd.DataFrame) -> pd.Series:
 
     counts = df["disaster_type"].value_counts().sort_values(ascending=False)
     return counts
+
