@@ -110,187 +110,55 @@ def _disaster_path(base_path: str, filename: str) -> str:
 
 
 
-
-def load_temperature_data(
-    base_path: str = ".",
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Load and clean temperature datasets.
-    """
-    # These names must match exactly what is in Cleaned Data/Temps
-    temps_gia_path   = _temp_path(base_path, "Gia_Bách_Nguyễn_Earth_Temps_Cleaned.csv")
-    temps_berk_path  = _temp_path(base_path, "Berkeley_Earth_Temps_Cleaned.csv")
-    temps_josep_path = _temp_path(base_path, "Josep_Ferrer_Temps_Cleaned.csv")
-
-
-
-
-
-    # --- Gia: annual averages in Fahrenheit ---
-    temps_gia = pd.read_csv(temps_gia_path)
-    temps_gia = temps_gia.rename(
-        columns={
-            "Year": "year",
-            "Average_Fahrenheit_Temperature": "TempF",
-        }
-    )
-    temps_gia["source"] = "Gia_Bách_Nguyễn"
-
-    # --- Berkeley Earth: monthly temps in °C -> °F ---
-    temps_berk = pd.read_csv(temps_berk_path)
-
-    # Handle date column (dt or Date)
-    if "dt" in temps_berk.columns:
-        date_col = "dt"
-    elif "Date" in temps_berk.columns:
-        date_col = "Date"
-    else:
-        # Fall back: first non-numeric column as date
-        non_numeric = temps_berk.select_dtypes(exclude="number").columns
-        date_col = non_numeric[0]
-
-    temps_berk["date"] = pd.to_datetime(temps_berk[date_col], errors="coerce")
-    temps_berk["year"] = temps_berk["date"].dt.year
-
-    # Detect which column contains temperature data
-    temp_candidates = [
-        "LandAndOceanAverageTemperature",
-        "LandAverageTemperature",
-        "AverageTemperature",
-        "TemperatureC",
-        "Temperature",
-    ]
-    temp_col = None
-    for c in temp_candidates:
-        if c in temps_berk.columns:
-            temp_col = c
-            break
-
-    # If none of the expected names are present, pick the first numeric column
-    if temp_col is None:
-        numeric_cols = temps_berk.select_dtypes(include="number").columns.tolist()
-        if not numeric_cols:
-            raise KeyError(
-                f"No numeric temperature column found in Berkeley dataset. "
-                f"Available columns: {list(temps_berk.columns)}"
-            )
-        temp_col = numeric_cols[0]
-
-    # Convert to Fahrenheit (Berkeley data is in °C)
-    temps_berk["TempF"] = temps_berk[temp_col] * 9 / 5 + 32
-    temps_berk["source"] = "Berkeley_Earth"
-
-
-    # --- Josep Ferrer: monthly temps in °F by country ---
-    temps_josep = pd.read_csv(temps_josep_path)
-    temps_josep["date"] = pd.to_datetime(temps_josep["EventDate"], errors="coerce")
-    temps_josep["year"] = temps_josep["date"].dt.year
-    temps_josep["TempF"] = pd.to_numeric(
-        temps_josep["TemperatureFahrenheit"], errors="coerce"
-    )
-    temps_josep["source"] = "Josep_Ferrer"
-
-    # Combine all temperature sources
-    temps_all = pd.concat(
-        [
-            temps_gia[["year", "TempF", "source"]],
-            temps_berk[["year", "TempF", "source"]],
-            temps_josep[["year", "TempF", "source"]],
-        ],
-        ignore_index=True,
-    )
-
-    temps_all = temps_all.dropna(subset=["year", "TempF"])
-    temps_all["year"] = temps_all["year"].astype(int)
-
-    temps_annual = (
-        temps_all.groupby("year", as_index=False)["TempF"]
-        .mean()
-        .sort_values("year")
-    )
-
-    return temps_all, temps_annual
-
-
-
 def load_disaster_data(
     base_path: str = ".",
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Load and clean disaster datasets.
+    Load and clean disaster dataset.
+
+    After team decision, we only use:
+    Cleaned Data/Natural Disasters/Baris_Dincer_Disasters_Cleaned.csv
 
     Returns:
-        disasters_all: long-format events table with columns
+        disasters_all: long-format events table
                        ['event_date', 'year', 'disaster_type', 'source']
         disasters_per_year: aggregated table ['year', 'disaster_count']
     """
-    # File paths inside Cleaned Data/Natural Disasters
-    dis_bar_path = _disaster_path(base_path, "Baris_Dincer_Disasters_Cleaned.csv")
-    dis_shrey_path = _disaster_path(base_path, "Shreyansh_Dangi_Disasters_Cleaned.csv")
+    # Path to the Baris disasters file in the repo
+    dis_bar_path = _csv_path(
+        base_path,
+        os.path.join(
+            "Cleaned Data",
+            "Natural Disasters",
+            "Baris_Dincer_Disasters_Cleaned.csv",
+        ),
+    )
 
-    # ---------- Baris Dinçer disasters ----------
+    # --- Baris Dinçer disasters ---
+    # expected columns: ['EventDate', 'Var2', 'Var3', 'Var4', 'Var5']
     dis_bar = pd.read_csv(dis_bar_path)
+    dis_bar["event_date"] = pd.to_datetime(dis_bar["EventDate"], errors="coerce")
+    dis_bar["year"] = dis_bar["event_date"].dt.year
 
-    # Prefer an existing Year column if present
-    if "Year" in dis_bar.columns:
-        dis_bar["year"] = pd.to_numeric(dis_bar["Year"], errors="coerce")
-        dis_bar["event_date"] = pd.to_datetime(
-            dis_bar.get("EventDate", pd.NaT), errors="coerce"
-        )
-    else:
-        # Derive year from a date-like column
-        if "EventDate" in dis_bar.columns:
-            date_col = "EventDate"
-        else:
-            non_numeric = dis_bar.select_dtypes(exclude="number").columns
-            date_col = non_numeric[0]
-        dis_bar["event_date"] = pd.to_datetime(dis_bar[date_col], errors="coerce")
-        dis_bar["year"] = dis_bar["event_date"].dt.year
-
-    # Guess disaster type column
-    baris_type_col = _guess_disaster_type_column(dis_bar)
-    dis_bar["disaster_type"] = dis_bar[baris_type_col].astype(str)
+    # Rename columns so we have a clear disaster_type field
+    dis_bar = dis_bar.rename(
+        columns={
+            "Var2": "region",
+            "Var3": "disaster_group",
+            "Var4": "disaster_subgroup",
+            "Var5": "disaster_type",
+        }
+    )
     dis_bar["source"] = "Baris_Dincer"
-    dis_bar_std = dis_bar[["event_date", "year", "disaster_type", "source"]]
 
-    # ---------- Shreyansh Dangi disasters ----------
-    dis_shrey = pd.read_csv(dis_shrey_path)
+    # Standardized event table
+    disasters_all = dis_bar[["event_date", "year", "disaster_type", "source"]].copy()
 
-    # Prefer an existing Year column if present
-    if "Year" in dis_shrey.columns:
-        dis_shrey["year"] = pd.to_numeric(dis_shrey["Year"], errors="coerce")
-        dis_shrey["event_date"] = pd.to_datetime(
-            dis_shrey.get("Date", pd.NaT), errors="coerce"
-        )
-    else:
-        if "Date" in dis_shrey.columns:
-            s_date_col = "Date"
-        else:
-            non_numeric_s = dis_shrey.select_dtypes(exclude="number").columns
-            s_date_col = non_numeric_s[0]
-        dis_shrey["event_date"] = pd.to_datetime(
-            dis_shrey[s_date_col], errors="coerce"
-        )
-        dis_shrey["year"] = dis_shrey["event_date"].dt.year
-
-    shrey_type_col = _guess_disaster_type_column(dis_shrey)
-    dis_shrey["disaster_type"] = dis_shrey[shrey_type_col].astype(str)
-    dis_shrey["source"] = "Shreyansh_Dangi"
-    dis_shrey_std = dis_shrey[["event_date", "year", "disaster_type", "source"]]
-
-    # ---------- Combine and clean ----------
-    disasters_all = pd.concat([dis_bar_std, dis_shrey_std], ignore_index=True)
-
-    # Drop missing years/types and force int years
+    # Drop rows missing year or disaster_type
     disasters_all = disasters_all.dropna(subset=["year", "disaster_type"])
     disasters_all["year"] = disasters_all["year"].astype(int)
 
-    # Keep only realistic, desired range (now up to 2025)
-    disasters_all = disasters_all[
-        (disasters_all["year"] >= 1900) & (disasters_all["year"] <= 2025)
-    ]
-
-    # Aggregate disasters per year
+    # Aggregate: disasters per year
     disasters_per_year = (
         disasters_all.groupby("year", as_index=False)
         .size()
@@ -299,6 +167,53 @@ def load_disaster_data(
     )
 
     return disasters_all, disasters_per_year
+
+
+
+
+def load_temperature_data(
+    base_path: str = ".",
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Load and clean temperature dataset.
+
+    After team decision, we only use the Berkeley Earth dataset:
+    Cleaned Data/Temps/Berkeley_Earth_Temps_Cleaned.csv
+
+    Returns:
+        temps_all:   long-format table ['year', 'TempF', 'source']
+        temps_annual: annual averages ['year', 'TempF']
+    """
+    # Path to the Berkeley file in the repo
+    temps_berk_path = _csv_path(
+        base_path,
+        os.path.join("Cleaned Data", "Temps", "Berkeley_Earth_Temps_Cleaned.csv"),
+    )
+
+    # --- Berkeley Earth: monthly temps in °C -> convert to °F and create 'year' ---
+    # expected columns: ['dt', 'LandAndOceanAverageTemperature']
+    temps_berk = pd.read_csv(temps_berk_path)
+    temps_berk["date"] = pd.to_datetime(temps_berk["dt"], errors="coerce")
+    temps_berk["year"] = temps_berk["date"].dt.year
+    temps_berk["TempF"] = temps_berk["LandAndOceanAverageTemperature"] * 9.0 / 5.0 + 32.0
+    temps_berk["source"] = "Berkeley_Earth"
+
+    # Use only the needed columns
+    temps_all = temps_berk[["year", "TempF", "source"]].copy()
+
+    # Clean: drop rows with missing year or TempF
+    temps_all = temps_all.dropna(subset=["year", "TempF"])
+    temps_all["year"] = temps_all["year"].astype(int)
+
+    # Annual average TempF
+    temps_annual = (
+        temps_all.groupby("year", as_index=False)["TempF"]
+        .mean()
+        .sort_values("year")
+    )
+
+    return temps_all, temps_annual
+
 
 
 # --------------------------------------------------------------------
