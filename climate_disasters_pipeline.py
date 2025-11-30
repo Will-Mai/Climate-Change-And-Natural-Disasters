@@ -220,33 +220,26 @@ def load_temperature_data(
 # 2. Merged dataset + helpers
 # --------------------------------------------------------------------
 
-def build_merged_dataset(
-    base_path: str = ".",
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def build_merged_dataset(base_path: str = ".") -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Load temperature + disaster data and build a merged annual dataset.
+    Build the main per-year dataset using ONLY disaster data.
 
-    Returns:
-        temps_annual:        ['year', 'TempF']
-        disasters_per_year:  ['year', 'disaster_count']
-        merged:              ['year', 'TempF', 'disaster_count']
+    Returns
+    -------
+    disasters_per_year : DataFrame
+        Table with columns like ['year', 'disaster_count', ...].
+    merged : DataFrame
+        Same as disasters_per_year (kept for backwards compatibility
+        with the original app structure).
     """
-    _, temps_annual = load_temperature_data(base_path=base_path)
-    _, disasters_per_year = load_disaster_data(base_path=base_path)
+    # Load all disaster events and per-year counts
+    disasters_all, disasters_per_year = load_disaster_data(base_path=base_path)
 
-    # Limit to a consistent year range (1900–2025)
-    temps_annual = temps_annual[
-        (temps_annual["year"] >= 1900) & (temps_annual["year"] <= 2025)
-    ]
-    disasters_per_year = disasters_per_year[
-        (disasters_per_year["year"] >= 1900) & (disasters_per_year["year"] <= 2025)
-    ]
+    # For now, 'merged' is just the per-year table
+    merged = disasters_per_year.copy()
 
-    merged = pd.merge(
-        temps_annual, disasters_per_year, on="year", how="outer"
-    ).sort_values("year")
+    return disasters_per_year, merged
 
-    return temps_annual, disasters_per_year, merged
 
 
 
