@@ -28,16 +28,16 @@ This pairing of datasets is particularly suitable for the project since it integ
 
 ## Dataset Links
 Surface Temperature Datasets
- - https://www.kaggle.com/datasets/berkeleyearth/climate-change-earth-surface-temperature-data
- - https://www.kaggle.com/datasets/giabchnguyn/average-temperature-from-1900-to-2023
- - https://www.kaggle.com/datasets/josepferrersnchez/bearkley-earth-surface-temperature-data
+ - [Climate Change: Earth Surface Temperature Data](https://www.kaggle.com/datasets/berkeleyearth/climate-change-earth-surface-temperature-data)
+ - [Average Temperature From 1900 To 2023](https://www.kaggle.com/datasets/giabchnguyn/average-temperature-from-1900-to-2023)
+ - [Bearkley Earth Surface Temperature Data](https://www.kaggle.com/datasets/josepferrersnchez/bearkley-earth-surface-temperature-data)
 
 Natural Disasters Datasets
- - https://www.kaggle.com/datasets/shreyanshdangi/global-natural-calamities-dataset
- - https://www.kaggle.com/datasets/brsdincer/all-natural-disasters-19002021-eosdis
+ - [https://www.kaggle.com/datasets/shreyanshdangi/global-natural-calamities-dataset](https://www.kaggle.com/datasets/shreyanshdangi/global-natural-calamities-dataset)
+ - [ALL NATURAL DISASTERS 1900-2021 / EOSDIS](https://www.kaggle.com/datasets/brsdincer/all-natural-disasters-19002021-eosdis)
 
 ## Cleaned Data
-https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/tree/main/Cleaned%20Data
+[Cleaned Data](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/tree/main/Cleaned%20Data)
 
 ## Data Cleaning Code
-https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/tree/main/Data%20Cleaning%20Code
+[Data Cleaning Code](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/tree/main/Data%20Cleaning%20Code)
