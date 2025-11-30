@@ -253,7 +253,7 @@ def load_disaster_data(
 
     # Keep only realistic years (adjust max as you like: 2025, 2030, etc.)
     disasters_all = disasters_all[
-        (disasters_all["year"] >= 1900) & (disasters_all["year"] <= 2030)
+        (disasters_all["year"] >= 1900) & (disasters_all["year"] <= 2025)
     ]
 
     # Aggregate disasters per year
