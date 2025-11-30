@@ -27,6 +27,41 @@ from typing import Tuple, Dict
 import numpy as np
 import pandas as pd
 
+def _guess_disaster_type_column(df: pd.DataFrame) -> str:
+    """
+    Try to guess which column contains the disaster type.
+    Prefers object (string) columns with names containing 'disaster', 'hazard', or 'type'.
+    Falls back to the first non-numeric column that is not obviously a date or year.
+    """
+    # Only look at non-numeric columns
+    object_cols = list(df.select_dtypes(include="object").columns)
+
+    if not object_cols:
+        # No object columns -> fall back to last column
+        return df.columns[-1]
+
+    # 1) Explicit name-style candidates
+    for name in ["disaster_type", "DisasterType", "Disaster_Type", "Disaster Type", "Hazard_Type"]:
+        if name in df.columns:
+            return name
+
+    # 2) Any object column with useful keywords
+    keywords = ["disaster", "hazard", "eventtype", "event_type", "type"]
+    for col in object_cols:
+        low = col.lower().replace(" ", "")
+        if any(k in low for k in keywords):
+            return col
+
+    # 3) Fallback: first object col that isn't clearly a date/year/id
+    for col in object_cols:
+        low = col.lower()
+        if "year" in low or "date" in low or "time" in low or "id" in low:
+            continue
+        return col
+
+    # 4) Final fallback: last column
+    return df.columns[-1]
+
 # Folder layout (what you showed in the screenshot):
 #   Cleaned Data/
 #       Temps/
@@ -170,50 +205,32 @@ def load_disaster_data(
     # ---------- Baris Dinçer disasters ----------
     dis_bar = pd.read_csv(dis_bar_path)
 
-    # Prefer an existing Year column if it exists
+    # Prefer an existing Year column if present
     if "Year" in dis_bar.columns:
         dis_bar["year"] = pd.to_numeric(dis_bar["Year"], errors="coerce")
         dis_bar["event_date"] = pd.to_datetime(
             dis_bar.get("EventDate", pd.NaT), errors="coerce"
         )
     else:
-        # Parse dates and derive year
+        # Derive year from a date-like column
         if "EventDate" in dis_bar.columns:
             date_col = "EventDate"
         else:
             non_numeric = dis_bar.select_dtypes(exclude="number").columns
             date_col = non_numeric[0]
-
         dis_bar["event_date"] = pd.to_datetime(dis_bar[date_col], errors="coerce")
         dis_bar["year"] = dis_bar["event_date"].dt.year
 
-    # Figure out which column holds the disaster type
-    baris_type_col = None
-
-    # 1) many versions use Var5
-    if "Var5" in dis_bar.columns:
-        baris_type_col = "Var5"
-
-    # 2) otherwise, look for likely names
-    if baris_type_col is None:
-        for c in ["disaster_type", "DisasterType", "Disaster_Type", "Disaster Type"]:
-            if c in dis_bar.columns:
-                baris_type_col = c
-                break
-
-    # 3) ultimate fallback: last column
-    if baris_type_col is None:
-        baris_type_col = dis_bar.columns[-1]
-
-    # Create a unified disaster_type column
-    dis_bar["disaster_type"] = dis_bar[baris_type_col]
+    # Guess disaster type column
+    baris_type_col = _guess_disaster_type_column(dis_bar)
+    dis_bar["disaster_type"] = dis_bar[baris_type_col].astype(str)
     dis_bar["source"] = "Baris_Dincer"
     dis_bar_std = dis_bar[["event_date", "year", "disaster_type", "source"]]
 
     # ---------- Shreyansh Dangi disasters ----------
     dis_shrey = pd.read_csv(dis_shrey_path)
 
-    # Prefer an existing Year column if it exists
+    # Prefer an existing Year column if present
     if "Year" in dis_shrey.columns:
         dis_shrey["year"] = pd.to_numeric(dis_shrey["Year"], errors="coerce")
         dis_shrey["event_date"] = pd.to_datetime(
@@ -225,33 +242,24 @@ def load_disaster_data(
         else:
             non_numeric_s = dis_shrey.select_dtypes(exclude="number").columns
             s_date_col = non_numeric_s[0]
-
         dis_shrey["event_date"] = pd.to_datetime(
             dis_shrey[s_date_col], errors="coerce"
         )
         dis_shrey["year"] = dis_shrey["event_date"].dt.year
 
-    # Detect disaster-type column
-    shrey_type_col = None
-    for c in ["DisasterType", "disaster_type", "Disaster_Type", "Disaster Type"]:
-        if c in dis_shrey.columns:
-            shrey_type_col = c
-            break
-    if shrey_type_col is None:
-        shrey_type_col = dis_shrey.columns[-1]
-
-    dis_shrey["disaster_type"] = dis_shrey[shrey_type_col]
+    shrey_type_col = _guess_disaster_type_column(dis_shrey)
+    dis_shrey["disaster_type"] = dis_shrey[shrey_type_col].astype(str)
     dis_shrey["source"] = "Shreyansh_Dangi"
     dis_shrey_std = dis_shrey[["event_date", "year", "disaster_type", "source"]]
 
-    # ---------- Combine both sources ----------
+    # ---------- Combine and clean ----------
     disasters_all = pd.concat([dis_bar_std, dis_shrey_std], ignore_index=True)
 
-    # Clean missing / bad years
+    # Drop missing years/types and force int years
     disasters_all = disasters_all.dropna(subset=["year", "disaster_type"])
     disasters_all["year"] = disasters_all["year"].astype(int)
 
-    # Keep only realistic years (adjust max as you like: 2025, 2030, etc.)
+    # Keep only realistic, desired range (now up to 2025)
     disasters_all = disasters_all[
         (disasters_all["year"] >= 1900) & (disasters_all["year"] <= 2025)
     ]
@@ -267,9 +275,6 @@ def load_disaster_data(
     return disasters_all, disasters_per_year
 
 
-
-
-
 # --------------------------------------------------------------------
 # 2. Merged dataset + helpers
 # --------------------------------------------------------------------
@@ -278,7 +283,7 @@ def build_merged_dataset(
     base_path: str = ".",
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    Convenience function to load everything and build the merged annual dataset.
+    Load temperature + disaster data and build a merged annual dataset.
 
     Returns:
         temps_annual:        ['year', 'TempF']
@@ -288,15 +293,14 @@ def build_merged_dataset(
     _, temps_annual = load_temperature_data(base_path=base_path)
     _, disasters_per_year = load_disaster_data(base_path=base_path)
 
-    # Keep only overlapping, realistic years (same range as we used for disasters)
+    # Limit to a consistent year range (1900–2025)
     temps_annual = temps_annual[
-        (temps_annual["year"] >= 1900) & (temps_annual["year"] <= 2015)
+        (temps_annual["year"] >= 1900) & (temps_annual["year"] <= 2025)
     ]
     disasters_per_year = disasters_per_year[
-        (disasters_per_year["year"] >= 1900) & (disasters_per_year["year"] <= 2015)
+        (disasters_per_year["year"] >= 1900) & (disasters_per_year["year"] <= 2025)
     ]
 
-    # Outer merge so missing years still appear with NaNs
     merged = pd.merge(
         temps_annual, disasters_per_year, on="year", how="outer"
     ).sort_values("year")
