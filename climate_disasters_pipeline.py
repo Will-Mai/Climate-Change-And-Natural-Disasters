@@ -41,6 +41,9 @@ def load_disaster_data(
     disasters_per_year : DataFrame
         ['year', 'disaster_count']
     """
+    import pandas as pd
+    import os
+
     # Build full path to the Baris disasters file
     dis_bar_path = os.path.join(
         base_path,
@@ -55,51 +58,54 @@ def load_disaster_data(
     if "EventDate" in dis_bar.columns:
         date_col = "EventDate"
     else:
-        # fallback: first column is assumed to be the date
         date_col = dis_bar.columns[0]
 
     dis_bar["event_date"] = pd.to_datetime(dis_bar[date_col], errors="coerce")
     dis_bar["year"] = dis_bar["event_date"].dt.year
 
-    # 2) Work out which column is the disaster type / hazard
-    hazard_col = None
-    candidate_names = [
-        "disaster_type",
-        "DisasterType",
-        "Disaster Type",
-        "Disaster_Type",
-        "Hazard_Type",
-        "Hazard Type",
-        "Disaster Subtype",
-        "Disaster_Subtype",
-        "Subtype",
-        "Type",
-        "Var5",  # original EM-DAT style column
-    ]
-    for c in candidate_names:
-        if c in dis_bar.columns:
-            hazard_col = c
-            break
+    # 2) Decide which column is the detailed disaster type
 
-    # If none of the explicit names were found, look for any column
-    # whose name suggests a type/hazard, but skip year/date columns.
-    if hazard_col is None:
-        for col in dis_bar.columns:
-            low = col.lower()
-            if "type" in low or "hazard" in low:
-                if "date" in low or "year" in low:
-                    continue
-                hazard_col = col
+    # ✅ First, if Var5 exists, ALWAYS use it (most detailed hazard)
+    if "Var5" in dis_bar.columns:
+        hazard_col = "Var5"
+    else:
+        # Otherwise fall back to name-based detection
+        hazard_col = None
+        candidate_names = [
+            "disaster_type",
+            "DisasterType",
+            "Disaster Type",
+            "Disaster_Type",
+            "Hazard_Type",
+            "Hazard Type",
+            "Disaster Subtype",
+            "Disaster_Subtype",
+            "Subtype",
+            "Type",
+        ]
+        for c in candidate_names:
+            if c in dis_bar.columns:
+                hazard_col = c
                 break
 
-    # Final fallback: last non-date, non-year column
-    if hazard_col is None:
-        non_date_cols = [
-            c
-            for c in dis_bar.columns
-            if "date" not in c.lower() and "year" not in c.lower()
-        ]
-        hazard_col = non_date_cols[-1]
+        # If still nothing, look for any column that seems like a type/hazard
+        if hazard_col is None:
+            for col in dis_bar.columns:
+                low = col.lower()
+                if "type" in low or "hazard" in low:
+                    if "date" in low or "year" in low:
+                        continue
+                    hazard_col = col
+                    break
+
+        # Final fallback: last non-date, non-year column
+        if hazard_col is None:
+            non_date_cols = [
+                c
+                for c in dis_bar.columns
+                if "date" not in c.lower() and "year" not in c.lower()
+            ]
+            hazard_col = non_date_cols[-1]
 
     # 3) Build a clean standardized table explicitly
     disasters_all = pd.DataFrame(
@@ -115,7 +121,7 @@ def load_disaster_data(
     disasters_all = disasters_all.dropna(subset=["year", "disaster_type"])
     disasters_all["year"] = disasters_all["year"].astype(int)
 
-    # 👉 Clamp years to 1900–2025 so plots don't go out to 2080
+    # Clamp years to 1900–2025
     disasters_all = disasters_all[disasters_all["year"].between(1900, 2025)]
 
     # 5) Aggregate: disasters per year
@@ -127,6 +133,7 @@ def load_disaster_data(
     )
 
     return disasters_all, disasters_per_year
+
 
 
 
