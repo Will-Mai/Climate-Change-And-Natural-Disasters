@@ -9,7 +9,7 @@ from climate_disasters_pipeline import (
 
 st.title("ENG 220 – Climate Change & Natural Disasters")
 
-# Folder where app.py lives (repo root in your screenshot)
+# Base path for data (folder where app.py lives)
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 # Build main merged table
@@ -28,7 +28,11 @@ st.subheader("Summary Statistics (Disasters per Year)")
 st.json(summary_stats)
 
 st.subheader("Most Common Disaster Types")
-st.bar_chart(type_counts)
+# Convert Series -> DataFrame so Streamlit uses disaster_type as x-axis
+type_counts_df = type_counts.reset_index()
+type_counts_df.columns = ["disaster_type", "count"]
+st.bar_chart(type_counts_df.set_index("disaster_type"))
 
 st.subheader("Histogram of Disaster Counts per Year")
 st.bar_chart(merged.set_index("year")["disaster_count"])
+
