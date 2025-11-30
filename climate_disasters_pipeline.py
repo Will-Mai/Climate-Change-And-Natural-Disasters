@@ -170,16 +170,21 @@ def load_disaster_data(
     # ---------- Baris Dinçer disasters ----------
     dis_bar = pd.read_csv(dis_bar_path)
 
-    # Parse dates and years
-    if "EventDate" in dis_bar.columns:
-        date_col = "EventDate"
+    # Prefer an existing Year column if it exists
+    if "Year" in dis_bar.columns:
+        dis_bar["year"] = pd.to_numeric(dis_bar["Year"], errors="coerce")
+        dis_bar["event_date"] = pd.to_datetime(dis_bar.get("EventDate", pd.NaT), errors="coerce")
     else:
-        # fallback: pick first non-numeric column as date
-        non_numeric = dis_bar.select_dtypes(exclude="number").columns
-        date_col = non_numeric[0]
+        # Parse dates and derive year
+        if "EventDate" in dis_bar.columns:
+            date_col = "EventDate"
+        else:
+            non_numeric = dis_bar.select_dtypes(exclude="number").columns
+            date_col = non_numeric[0]
 
-    dis_bar["event_date"] = pd.to_datetime(dis_bar[date_col], errors="coerce")
-    dis_bar["year"] = dis_bar["event_date"].dt.year
+        dis_bar["event_date"] = pd.to_datetime(dis_bar[date_col], errors="coerce")
+        dis_bar["year"] = dis_bar["event_date"].dt.year
+
 
     # Figure out which column holds the disaster type
     baris_type_col = None
@@ -208,15 +213,19 @@ def load_disaster_data(
     # ---------- Shreyansh Dangi disasters ----------
     dis_shrey = pd.read_csv(dis_shrey_path)
 
-    # Parse dates and years
-    if "Date" in dis_shrey.columns:
-        s_date_col = "Date"
+    # Prefer an existing Year column if it exists
+    if "Year" in dis_shrey.columns:
+        dis_shrey["year"] = pd.to_numeric(dis_shrey["Year"], errors="coerce")
+        dis_shrey["event_date"] = pd.to_datetime(dis_shrey.get("Date", pd.NaT), errors="coerce")
     else:
-        non_numeric_s = dis_shrey.select_dtypes(exclude="number").columns
-        s_date_col = non_numeric_s[0]
+        if "Date" in dis_shrey.columns:
+            s_date_col = "Date"
+        else:
+            non_numeric_s = dis_shrey.select_dtypes(exclude="number").columns
+            s_date_col = non_numeric_s[0]
 
-    dis_shrey["event_date"] = pd.to_datetime(dis_shrey[s_date_col], errors="coerce")
-    dis_shrey["year"] = dis_shrey["event_date"].dt.year
+        dis_shrey["event_date"] = pd.to_datetime(dis_shrey[s_date_col], errors="coerce")
+        dis_shrey["year"] = dis_shrey["event_date"].dt.year
 
     # Detect disaster-type column
     shrey_type_col = None
@@ -233,17 +242,29 @@ def load_disaster_data(
     dis_shrey_std = dis_shrey[["event_date", "year", "disaster_type", "source"]]
 
     # ---------- Combine both sources ----------
-    disasters_all = pd.concat([dis_bar_std, dis_shrey_std], ignore_index=True)
+# Combine datasets
+disasters_all = pd.concat([dis_bar_std, dis_shrey_std], ignore_index=True)
 
-    disasters_all = disasters_all.dropna(subset=["year", "disaster_type"])
-    disasters_all["year"] = disasters_all["year"].astype(int)
+# Clean missing values
+disasters_all = disasters_all.dropna(subset=["year", "disaster_type"])
 
-    disasters_per_year = (
-        disasters_all.groupby("year", as_index=False)
-        .size()
-        .rename(columns={"size": "disaster_count"})
-        .sort_values("year")
-    )
+# Ensure year is integer
+disasters_all["year"] = disasters_all["year"].astype(int)
+
+# Keep only realistic years
+# (prevent weird parsed years like 2045, 2077, 3999, etc.)
+disasters_all = disasters_all[
+    (disasters_all["year"] >= 1900) & (disasters_all["year"] <= 2030)
+]
+
+# Aggregate disasters per year
+disasters_per_year = (
+    disasters_all.groupby("year", as_index=False)
+    .size()
+    .rename(columns={"size": "disaster_count"})
+    .sort_values("year")
+)
+
 
     return disasters_all, disasters_per_year
 
