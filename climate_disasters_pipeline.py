@@ -288,32 +288,21 @@ def build_merged_dataset(
     _, temps_annual = load_temperature_data(base_path=base_path)
     _, disasters_per_year = load_disaster_data(base_path=base_path)
 
+    # Keep only overlapping, realistic years (same range as we used for disasters)
+    temps_annual = temps_annual[
+        (temps_annual["year"] >= 1900) & (temps_annual["year"] <= 2015)
+    ]
+    disasters_per_year = disasters_per_year[
+        (disasters_per_year["year"] >= 1900) & (disasters_per_year["year"] <= 2015)
+    ]
+
+    # Outer merge so missing years still appear with NaNs
     merged = pd.merge(
         temps_annual, disasters_per_year, on="year", how="outer"
     ).sort_values("year")
 
     return temps_annual, disasters_per_year, merged
 
-
-def compute_disaster_summary(merged: pd.DataFrame) -> Dict[str, float]:
-    """
-    Compute summary statistics for disaster_count (like Total Spent stats).
-
-    Returns a dict with keys:
-        Count, Mean, StdDev, Min, Median, Max, Sum
-    """
-    dc = merged["disaster_count"]
-
-    summary_stats = {
-        "Count": float(dc.count()),
-        "Mean": float(dc.mean()),
-        "StdDev": float(dc.std()),
-        "Min": float(dc.min()),
-        "Median": float(dc.median()),
-        "Max": float(dc.max()),
-        "Sum": float(dc.sum()),
-    }
-    return summary_stats
 
 
 def disaster_type_counts(disasters_all: pd.DataFrame) -> pd.Series:
