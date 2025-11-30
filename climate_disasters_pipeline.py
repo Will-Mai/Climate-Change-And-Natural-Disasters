@@ -77,10 +77,48 @@ def load_temperature_data(
 
     # --- Berkeley Earth: monthly temps in °C -> °F ---
     temps_berk = pd.read_csv(temps_berk_path)
-    temps_berk["date"] = pd.to_datetime(temps_berk["dt"], errors="coerce")
+
+    # Handle date column (dt or Date)
+    if "dt" in temps_berk.columns:
+        date_col = "dt"
+    elif "Date" in temps_berk.columns:
+        date_col = "Date"
+    else:
+        # Fall back: first non-numeric column as date
+        non_numeric = temps_berk.select_dtypes(exclude="number").columns
+        date_col = non_numeric[0]
+
+    temps_berk["date"] = pd.to_datetime(temps_berk[date_col], errors="coerce")
     temps_berk["year"] = temps_berk["date"].dt.year
-    temps_berk["TempF"] = temps_berk["LandAndOceanAverageTemperature"] * 9 / 5 + 32
+
+    # Detect which column contains temperature data
+    temp_candidates = [
+        "LandAndOceanAverageTemperature",
+        "LandAverageTemperature",
+        "AverageTemperature",
+        "TemperatureC",
+        "Temperature",
+    ]
+    temp_col = None
+    for c in temp_candidates:
+        if c in temps_berk.columns:
+            temp_col = c
+            break
+
+    # If none of the expected names are present, pick the first numeric column
+    if temp_col is None:
+        numeric_cols = temps_berk.select_dtypes(include="number").columns.tolist()
+        if not numeric_cols:
+            raise KeyError(
+                f"No numeric temperature column found in Berkeley dataset. "
+                f"Available columns: {list(temps_berk.columns)}"
+            )
+        temp_col = numeric_cols[0]
+
+    # Convert to Fahrenheit (Berkeley data is in °C)
+    temps_berk["TempF"] = temps_berk[temp_col] * 9 / 5 + 32
     temps_berk["source"] = "Berkeley_Earth"
+
 
     # --- Josep Ferrer: monthly temps in °F by country ---
     temps_josep = pd.read_csv(temps_josep_path)
