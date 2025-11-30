@@ -30,39 +30,65 @@ import pandas as pd
 def _guess_disaster_type_column(df: pd.DataFrame) -> str:
     """
     Try to guess which column contains the disaster type.
-    Prefers object (string) columns with names containing 'disaster', 'hazard', or 'type'.
-    Falls back to the first non-numeric column that is not obviously a date or year.
+
+    We prefer more detailed fields first (subtype / subsubtype),
+    then broader 'type' fields, then fall back to a generic object column.
     """
-    # Only look at non-numeric columns
     object_cols = list(df.select_dtypes(include="object").columns)
 
     if not object_cols:
         # No object columns -> fall back to last column
         return df.columns[-1]
 
-    # 1) Explicit name-style candidates
-    for name in ["disaster_type", "DisasterType", "Disaster_Type", "Disaster Type", "Hazard_Type"]:
+    # 1) Prefer *fine-grained* subtype / subsubtype columns if present
+    fine_names = [
+        "Disaster Subsubtype",
+        "Disaster_Subsubtype",
+        "DisasterSubsubtype",
+        "Disaster Subtype",
+        "Disaster_Subtype",
+        "DisasterSubtype",
+        "Subsubtype",
+        "SubSubType",
+        "Subtype",
+        "SubType",
+    ]
+    for name in fine_names:
         if name in df.columns:
             return name
 
-    # 2) Any object column with useful keywords
-    keywords = ["disaster", "hazard", "eventtype", "event_type", "type"]
+    # 2) Then explicit "type" / "hazard" columns (coarser categories)
+    coarse_names = [
+        "disaster_type",
+        "DisasterType",
+        "Disaster_Type",
+        "Disaster Type",
+        "Hazard_Type",
+        "Hazard Type",
+    ]
+    for name in coarse_names:
+        if name in df.columns:
+            return name
+
+    # 3) Any object column with useful keywords, preferring subtype-like names
+    keywords = ["subsubtype", "subtype", "disaster", "hazard", "eventtype", "event_type", "type"]
     for col in object_cols:
         low = col.lower().replace(" ", "")
         if any(k in low for k in keywords):
             return col
 
-    # 3) Fallback: first object col that isn't clearly a date/year/id
+    # 4) Fallback: first object col that isn't clearly a date/year/id
     for col in object_cols:
         low = col.lower()
         if "year" in low or "date" in low or "time" in low or "id" in low:
             continue
         return col
 
-    # 4) Final fallback: last column
+    # 5) Final fallback: last column
     return df.columns[-1]
 
-# Folder layout (what you showed in the screenshot):
+
+
 #   Cleaned Data/
 #       Temps/
 #       Natural Disasters/
