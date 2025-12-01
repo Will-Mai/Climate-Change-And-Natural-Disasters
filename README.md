@@ -19,7 +19,7 @@ The primary objective of the project is to analyze correlations between rising s
 
 - Dataset research and justification: David Peyton
 
-- Writing documentation and project report :	David Peyton, James Lambros and William Mai
+- Writing documentation and project report :	David Peyton, James Lambros, William Mai and Abdulrahman Almedaj
 
 - Building Streamlit application : Anthony Kardeen
 
