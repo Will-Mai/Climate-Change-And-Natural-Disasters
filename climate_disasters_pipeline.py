@@ -22,78 +22,103 @@ Files expected (in base_path or Kaggle input path):
 # climate_disasters_pipeline.py
 # Minimal disasters-only pipeline for ENG 220 Streamlit app
 
-from __future__ import annotations
-
 import os
+import pandas as pd
 from typing import Tuple, Dict
 
-import pandas as pd
 
-DATA_DIR = os.path.join("Cleaned Data", "Natural Disasters")
+# ---------------------------------------------------------------------
+# LOAD DISASTER DATA (Var5 = true disaster type)
+# ---------------------------------------------------------------------
+def load_disaster_data(base_path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Load cleaned disaster dataset and compute counts per year."""
 
-
-def _csv_path(base_path: str, filename: str) -> str:
-    return os.path.join(base_path, DATA_DIR, filename)
-
-
-def load_disaster_data(base_path: str):
-    dis_path = os.path.join(base_path, "Cleaned Data", "Natural Disasters", "Baris_Dincer_Disasters_Cleaned.csv")
+    dis_path = os.path.join(
+        base_path, "Cleaned Data", "Natural Disasters", "Baris_Dincer_Disasters_Cleaned.csv"
+    )
 
     df = pd.read_csv(dis_path)
 
-    # Fix column names
+    # Your dataset columns = EventDate, Var2, Var3, Var4, Var5
     df.columns = ["event_date", "region", "category", "subcategory", "disaster_type"]
+
+    # Fix spacing / formatting
+    df["disaster_type"] = df["disaster_type"].astype(str).str.strip()
 
     # Parse dates
     df["event_date"] = pd.to_datetime(df["event_date"], errors="coerce")
-    df["year"] = df["event_date"].dt.year
+    df = df.dropna(subset=["event_date"])
 
-    # Drop empty years
-    df = df.dropna(subset=["year"])
-    df["year"] = df["year"].astype(int)
+    df["year"] = df["event_date"].dt.year.astype(int)
 
-    # Use Var5 as the true disaster type
-    df["disaster_type"] = df["disaster_type"].astype(str).str.strip()
+    # Remove garbage future years
+    df = df[(df["year"] >= 1970) & (df["year"] <= 2022)]
 
+    # Count disasters per year
     disasters_per_year = df.groupby("year").size().reset_index(name="disaster_count")
 
     return df, disasters_per_year
 
 
-    # Full event-level table
-    disasters_all = dis_bar[["event_date", "year", "disaster_type"]].copy()
-    disasters_all["source"] = "Baris_Dincer"
+# ---------------------------------------------------------------------
+# LOAD TEMPERATURE DATA (monthly → annual averages)
+# ---------------------------------------------------------------------
+def load_temperature_data(base_path: str) -> pd.DataFrame:
+    """Loads monthly temperature data and converts to annual average."""
 
-    # Annual totals
-    disasters_per_year = (
-        disasters_all.groupby("year", as_index=False)
-        .agg(disaster_count=("event_date", "count"))
-        .sort_values("year")
+    temp_path = os.path.join(
+        base_path, "Cleaned Data", "Temps", "Berkeley_Earth_Temps_Cleaned.csv"
     )
 
-    return disasters_all, disasters_per_year
+    temps = pd.read_csv(temp_path)
+
+    temps.columns = ["dt", "temperature"]
+    temps["dt"] = pd.to_datetime(temps["dt"], errors="coerce")
+    temps["year"] = temps["dt"].dt.year
+
+    temps_annual = (
+        temps.groupby("year")["temperature"]
+        .mean()
+        .reset_index(name="TempF")
+    )
+
+    # Limit to 1970–2022 to match disasters
+    temps_annual = temps_annual[(temps_annual["year"] >= 1970) & (temps_annual["year"] <= 2022)]
+
+    return temps_annual
 
 
-def build_merged_dataset(base_path: str = "."):
+# ---------------------------------------------------------------------
+# MERGE DATASETS
+# ---------------------------------------------------------------------
+def build_merged_dataset(base_path: str):
     disasters_all, disasters_per_year = load_disaster_data(base_path)
-    merged = disasters_per_year[(disasters_per_year["year"] >= 1970) &
-                                (disasters_per_year["year"] <= 2022)]
-    return disasters_per_year, merged
+    temps_annual = load_temperature_data(base_path)
+
+    merged = pd.merge(temps_annual, disasters_per_year, on="year", how="left")
+    merged["disaster_count"] = merged["disaster_count"].fillna(0).astype(int)
+
+    return disasters_per_year, merged, disasters_all
 
 
-def compute_disaster_summary(merged: pd.DataFrame) -> Dict[str, float]:
-    s = merged["disaster_count"]
+# ---------------------------------------------------------------------
+# SUMMARY STATISTICS
+# ---------------------------------------------------------------------
+def compute_disaster_summary(merged_df: pd.DataFrame) -> Dict[str, float]:
+    counts = merged_df["disaster_count"]
     return {
-        "min": int(s.min()),
-        "max": int(s.max()),
-        "mean": float(s.mean()),
-        "median": float(s.median()),
-        "std": float(s.std()),
-        "years_with_data": int(s.count()),
+        "min": int(counts.min()),
+        "max": int(counts.max()),
+        "mean": float(counts.mean()),
+        "median": int(counts.median()),
+        "std": float(counts.std()),
+        "years_with_data": int(counts.count()),
     }
 
 
-def disaster_type_counts(df):
+# ---------------------------------------------------------------------
+# DISASTER TYPE COUNTS
+# ---------------------------------------------------------------------
+def disaster_type_counts(df: pd.DataFrame) -> pd.Series:
     return df["disaster_type"].value_counts()
-
 
