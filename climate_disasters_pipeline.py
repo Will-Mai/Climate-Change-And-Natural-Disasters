@@ -36,31 +36,29 @@ def _csv_path(base_path: str, filename: str) -> str:
     return os.path.join(base_path, DATA_DIR, filename)
 
 
-def load_disaster_data(base_path: str = ".") -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Load, clean, and standardize the Baris Dinçer disaster dataset."""
-    dis_bar_path = _csv_path(base_path, "Baris_Dincer_Disasters_Cleaned.csv")
+def load_disaster_data(base_path: str):
+    dis_path = os.path.join(base_path, "Cleaned Data", "Natural Disasters", "Baris_Dincer_Disasters_Cleaned.csv")
 
-    dis_bar = pd.read_csv(dis_bar_path)
+    df = pd.read_csv(dis_path)
 
-    # Convert date + year
-    dis_bar["event_date"] = pd.to_datetime(dis_bar["EventDate"], errors="coerce")
-    dis_bar["year"] = dis_bar["event_date"].dt.year
-    dis_bar = dis_bar.dropna(subset=["year"])
-    dis_bar["year"] = dis_bar["year"].astype(int)
+    # Fix column names
+    df.columns = ["event_date", "region", "category", "subcategory", "disaster_type"]
 
-    # Limit strange future entries
-    dis_bar = dis_bar[(dis_bar["year"] >= 1900) & (dis_bar["year"] <= 2022)]
+    # Parse dates
+    df["event_date"] = pd.to_datetime(df["event_date"], errors="coerce")
+    df["year"] = df["event_date"].dt.year
 
-    # Rename columns to human-readable names
-    dis_bar.rename(
-        columns={
-            "Var2": "region",
-            "Var3": "disaster_group",
-            "Var4": "broad_type",
-            "Var5": "disaster_type",   # <-- REAL detailed hazard label
-        },
-        inplace=True,
-    )
+    # Drop empty years
+    df = df.dropna(subset=["year"])
+    df["year"] = df["year"].astype(int)
+
+    # Use Var5 as the true disaster type
+    df["disaster_type"] = df["disaster_type"].astype(str).str.strip()
+
+    disasters_per_year = df.groupby("year").size().reset_index(name="disaster_count")
+
+    return df, disasters_per_year
+
 
     # Full event-level table
     disasters_all = dis_bar[["event_date", "year", "disaster_type"]].copy()
@@ -78,7 +76,8 @@ def load_disaster_data(base_path: str = ".") -> Tuple[pd.DataFrame, pd.DataFrame
 
 def build_merged_dataset(base_path: str = "."):
     disasters_all, disasters_per_year = load_disaster_data(base_path)
-    merged = disasters_per_year.copy()
+    merged = disasters_per_year[(disasters_per_year["year"] >= 1970) &
+                                (disasters_per_year["year"] <= 2022)]
     return disasters_per_year, merged
 
 
@@ -94,8 +93,7 @@ def compute_disaster_summary(merged: pd.DataFrame) -> Dict[str, float]:
     }
 
 
-def disaster_type_counts(disasters_all: pd.DataFrame):
-    return disasters_all["disaster_type"].value_counts().sort_values(ascending=False)
-
+def disaster_type_counts(df):
+    return df["disaster_type"].value_counts()
 
 
