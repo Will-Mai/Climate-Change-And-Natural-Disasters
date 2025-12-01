@@ -81,7 +81,19 @@ def load_disaster_data(
     )
 
     # Long-format events table
-    disasters_all = dis_bar[["event_date", "year", "disaster_type"]].copy()
+    # Convert date column
+    dis_bar["event_date"] = pd.to_datetime(dis_bar["EventDate"], errors="coerce")
+
+    # Rename columns to match what the rest of the pipeline expects
+    dis_bar = dis_bar.rename(columns={
+        "HazardType": "disaster_type",
+        "Source": "source",
+        "Year": "year"
+    })
+
+    # Now select the columns
+    disasters_all = dis_bar[["event_date", "year", "disaster_type", "source"]].copy()
+    
     disasters_all["source"] = "Baris_Dincer"
 
     # Annual counts
