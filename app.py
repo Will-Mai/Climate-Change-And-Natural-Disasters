@@ -71,8 +71,20 @@ st.bar_chart(merged.set_index("year")["disaster_count"])
 # (Optional) Temperature vs Disaster Counts scatter
 # --------------------------------------------------------------------
 st.subheader("Temperature vs. Disaster Counts")
-st.scatter_chart(
-    merged.set_index("TempF")[["disaster_count"]],
-)
+
+# Pick whichever temperature column actually exists
+temp_col = None
+for cand in ["TempF", "temperature", "LandAndOceanAverageTemperature"]:
+    if cand in merged.columns:
+        temp_col = cand
+        break
+
+if temp_col is not None:
+    st.scatter_chart(
+        merged.set_index(temp_col)[["disaster_count"]],
+    )
+else:
+    st.write("Temperature column not found in merged dataset.")
+
 
 
