@@ -34,11 +34,11 @@ Natural Disasters Datasets
  - [ALL NATURAL DISASTERS 1900-2021 / EOSDIS](https://www.kaggle.com/datasets/brsdincer/all-natural-disasters-19002021-eosdis)
 
 ## Cleaned Data
-[Cleaned Data](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/tree/main/Cleaned%20Data)
+ - [Cleaned Data](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/tree/main/Cleaned%20Data)
 
 ## Data Cleaning Code
-[Data Cleaning Code](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/tree/main/Data%20Cleaning%20Code)
+ - [Data Cleaning Code](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/tree/main/Data%20Cleaning%20Code)
 
 ## Streamlit Code
-[app.py](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/blob/main/app.py)\
-[climate_disasters_pipeline.py](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/blob/main/climate_disasters_pipeline.py)
+ - [app.py](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/blob/main/app.py)\
+ - [climate_disasters_pipeline.py](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/blob/main/climate_disasters_pipeline.py)
