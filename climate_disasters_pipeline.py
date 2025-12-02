@@ -64,26 +64,52 @@ def load_disaster_data(base_path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
 # LOAD TEMPERATURE DATA (monthly → annual averages)
 # ---------------------------------------------------------------------
 def load_temperature_data(base_path: str) -> pd.DataFrame:
-    """Loads monthly temperature data and converts to annual average."""
+    """
+    Load the Berkeley Earth temperature data and aggregate to annual means.
 
-    temp_path = os.path.join(
-        base_path, "Cleaned Data", "Temps", "Berkeley_Earth_Temps_Cleaned.csv"
+    This version is defensive about column names so it won't crash if the CSV
+    has an extra index column.
+    """
+    temps_path = os.path.join(
+        base_path,
+        "Cleaned Data",
+        "Temps",
+        "Berkeley_Earth_Temps_Cleaned.csv",
     )
 
-    temps = pd.read_csv(temp_path)
+    temps = pd.read_csv(temps_path)
 
-    temps.columns = ["dt", "temperature"]
-    temps["dt"] = pd.to_datetime(temps["dt"], errors="coerce")
+    # Figure out which columns are the date and the temperature
+    cols = list(temps.columns)
+
+    # Date column: prefer a column literally called "dt"
+    if "dt" in temps.columns:
+        date_col = "dt"
+    else:
+        date_col = cols[0]
+
+    # Temperature column: look for something that contains "temp"
+    temp_candidates = [
+        c for c in temps.columns if "temp" in c.lower() or "temperature" in c.lower()
+    ]
+    if temp_candidates:
+        temp_col = temp_candidates[0]
+    else:
+        # fall back to second column
+        temp_col = cols[1]
+
+    # Rename to standard names that the rest of your code expects
+    temps = temps.rename(columns={date_col: "dt", temp_col: "temperature"})
+
+    # Parse dates and get year
+    temps["dt"] = pd.to_datetime(temps["dt"], errors="coerce", dayfirst=True)
+    temps = temps.dropna(subset=["dt"])
     temps["year"] = temps["dt"].dt.year
 
+    # Aggregate to annual mean temperature
     temps_annual = (
-        temps.groupby("year")["temperature"]
-        .mean()
-        .reset_index(name="TempF")
+        temps.groupby("year", as_index=False)["temperature"].mean().sort_values("year")
     )
-
-    # Limit to 1970–2022 to match disasters
-    temps_annual = temps_annual[(temps_annual["year"] >= 1970) & (temps_annual["year"] <= 2022)]
 
     return temps_annual
 
