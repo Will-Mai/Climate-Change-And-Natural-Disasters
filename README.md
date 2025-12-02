@@ -40,5 +40,5 @@ Natural Disasters Datasets
  - [Data Cleaning Code](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/tree/main/Data%20Cleaning%20Code)
 
 ## Streamlit Code
- - [app.py](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/blob/main/app.py)\
+ - [app.py](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/blob/main/app.py)
  - [climate_disasters_pipeline.py](https://github.com/Will-Mai/Climate-Change-And-Natural-Disasters/blob/main/climate_disasters_pipeline.py)
